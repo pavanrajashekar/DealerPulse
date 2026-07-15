@@ -145,17 +145,22 @@ function BranchIntelligenceContent() {
 
   useEffect(() => {
     if (branchParam && branches.some(b => b.id === branchParam)) {
-      setSelectedEntityId(branchParam);
+      if (selectedEntityId !== branchParam) {
+        setSelectedEntityId(branchParam);
+      }
     } else if (!selectedEntityId || !branches.some(b => b.id === selectedEntityId)) {
-      setSelectedEntityId(branches[0]?.id || null);
+      const defaultId = branches[0]?.id || null;
+      if (selectedEntityId !== defaultId) {
+        setSelectedEntityId(defaultId);
+      }
     }
-  }, [branchParam, branches, selectedEntityId, setSelectedEntityId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchParam, branches]);
 
   const selectedBranch = branches.find(b => b.id === selectedEntityId) || branches[0];
 
   const handleBranchSelect = (id: string) => {
-    setSelectedEntityId(id);
-    router.push(`/branch-intelligence?branch=${id}`);
+    router.push(`/branch-intelligence?branch=${id}`, { scroll: false });
   };
 
   if (!selectedBranch) return <PageSkeleton />;
@@ -313,7 +318,7 @@ function BranchIntelligenceContent() {
 
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
-      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-10 sticky top-0">
+      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-40 sticky top-0">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Branch Intelligence</h1>
         <div className="flex items-center space-x-4 flex-shrink-0">
           <GlobalFilterBar />

@@ -245,7 +245,7 @@ function ModelsContent() {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
       {/* PAGE HEADER */}
-      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-10 sticky top-0">
+      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-40 sticky top-0">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Models</h1>
         <div className="flex items-center space-x-4 flex-shrink-0">
           <GlobalFilterBar />

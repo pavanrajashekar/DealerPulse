@@ -244,6 +244,7 @@ export default function AISummary() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isInsightsExpanded, setIsInsightsExpanded] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const getPageName = () => {
@@ -450,27 +451,40 @@ export default function AISummary() {
         </div>
 
         {/* Suggestion pills */}
-        <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0">
-          {pageSuggestions.map((prompt, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setChatInput(prompt);
-                setIsInsightsExpanded(false);
-              }}
-              className="px-3.5 py-1.5 text-[11px] font-bold bg-background hover:bg-muted text-muted-foreground hover:text-foreground rounded-full border border-border shadow-sm transition-all cursor-pointer"
+        <AnimatePresence>
+          {showSuggestions && (
+            <motion.div 
+              initial={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0, overflow: 'hidden' }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-wrap gap-2 flex-shrink-0"
             >
-              {prompt}
-            </button>
-          ))}
-        </div>
+              {pageSuggestions.map((prompt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setChatInput(prompt);
+                    setIsInsightsExpanded(false);
+                    setShowSuggestions(false);
+                  }}
+                  className="px-3.5 py-1.5 text-[11px] font-bold bg-background hover:bg-muted text-muted-foreground hover:text-foreground rounded-full border border-border shadow-sm transition-all cursor-pointer"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input */}
         <form onSubmit={handleChatSubmit} className="flex items-center relative flex-shrink-0 mt-1">
           <input
             type="text"
             value={chatInput}
-            onFocus={() => setIsInsightsExpanded(false)}
+            onFocus={() => {
+              setIsInsightsExpanded(false);
+              setShowSuggestions(false);
+            }}
             onChange={e => setChatInput(e.target.value)}
             placeholder="Ask Copilot..."
             disabled={isTyping}

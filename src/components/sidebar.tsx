@@ -78,13 +78,13 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
     <div className="flex flex-col h-full">
       {/* Brand Logo Header */}
       <div className="flex items-center justify-center h-16 flex-shrink-0 relative">
-        <div className="flex items-center justify-center w-10 h-10 text-primary overflow-hidden">
+        <Link href="/overview" className="flex items-center justify-center w-10 h-10 text-primary overflow-hidden hover:scale-105 transition-transform" onClick={() => setMobileOpen && setMobileOpen(false)}>
           {/* Geometric Logo */}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="18 9 410 285" className="w-full h-full">
             <path d="M125.1,104.9 Q124.0,107.0 124.0,109.4 L124.0,110.7 Q124.0,113.0 126.0,114.2 L127.0,114.8 Q129.0,116.0 131.3,116.0 L316.4,116.0 Q319.0,116.0 321.0,114.4 L322.0,113.6 Q324.0,112.0 323.4,109.5 L322.8,106.6 Q322.0,103.0 320.2,99.8 L300.8,64.0 Q297.0,57.0 289.0,57.0 L159.0,57.0 Q151.0,57.0 147.2,64.0 Z" fill="currentColor"/>
             <path d="M56.6,155.4 Q55.0,157.0 56.0,159.1 L70.6,190.7 Q74.0,198.0 82.0,198.2 L133.0,199.8 Q141.0,200.0 144.9,207.0 L163.1,239.0 Q167.0,246.0 175.0,246.0 L272.0,246.0 Q280.0,246.0 283.9,239.0 L302.1,207.0 Q306.0,200.0 314.0,199.9 L364.0,199.1 Q372.0,199.0 375.8,192.0 L391.5,162.8 Q393.0,160.0 391.4,157.2 L390.6,155.8 Q389.0,153.0 385.8,153.0 L337.0,153.0 Q329.0,153.0 324.9,159.9 L305.1,193.1 Q301.0,200.0 293.0,200.0 L154.0,200.0 Q146.0,200.0 142.0,193.1 L123.0,159.9 Q119.0,153.0 111.0,153.0 L61.3,153.0 Q59.0,153.0 57.4,154.6 Z" fill="currentColor"/>
           </svg>
-        </div>
+        </Link>
         {setMobileOpen && (
           <button 
             onClick={handleClose}

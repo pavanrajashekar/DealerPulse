@@ -2,6 +2,18 @@
 
 export const formatCurrency = (val: number) => `₹${(val / 10000000).toFixed(2)} Cr`;
 
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function formatDate(dateString: string | Date | undefined | null): string {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return typeof dateString === 'string' ? dateString : 'N/A';
+  
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
 /**
  * Export an array of flat objects to a CSV file download.
  */
