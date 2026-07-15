@@ -7,6 +7,7 @@ import { getGlobalMetrics, dealershipData, ANCHOR_DATE } from '@/lib/dealership-
 import { useDashboardContext } from '@/lib/dashboard-context';
 import GlobalFilterBar from '@/components/global-filter-bar';
 import { calculateHealthScore } from '@/components/score-card';
+import { formatDate } from '@/lib/utils';
 import {
   Users,
   Search,
@@ -69,22 +70,24 @@ function SalesRepsContent() {
 
   useEffect(() => {
     if (repParam && reps.some(r => r.id === repParam)) {
-      setSelectedEntityId(repParam);
+      if (selectedEntityId !== repParam) {
+        setSelectedEntityId(repParam);
+      }
     } else if (!selectedEntityId || !reps.some(r => r.id === selectedEntityId)) {
-      // Default to rep who needs most attention: lowest conversion among sales officers
-      const sorted = [...reps]
-        .filter(r => r.role === 'sales_officer')
-        .sort((a, b) => (a.conversion || 100) - (b.conversion || 100));
-      const worstRep = sorted[0] || reps[0];
-      setSelectedEntityId(worstRep?.id || null);
+      // Default to the first rep in the list (highest conversion)
+      const sorted = [...reps].sort((a, b) => (b.conversion || 0) - (a.conversion || 0));
+      const defaultId = sorted[0]?.id || null;
+      if (selectedEntityId !== defaultId) {
+        setSelectedEntityId(defaultId);
+      }
     }
-  }, [repParam, reps, selectedEntityId, setSelectedEntityId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repParam, reps]);
 
-  const selectedRep = reps.find(r => r.id === selectedEntityId) || [...reps].sort((a, b) => (a.conversion || 100) - (b.conversion || 100))[0];
+  const selectedRep = reps.find(r => r.id === selectedEntityId) || [...reps].sort((a, b) => (b.conversion || 0) - (a.conversion || 0))[0];
 
   const handleRepSelect = (id: string) => {
-    setSelectedEntityId(id);
-    router.push(`/sales-reps?rep=${id}`);
+    router.push(`/sales-reps?rep=${id}`, { scroll: false });
   };
 
   const filteredReps = useMemo(() => {
@@ -214,7 +217,7 @@ function SalesRepsContent() {
 
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
-      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-10 sticky top-0">
+      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-40 sticky top-0">
         <div className="flex items-center">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Sales Representatives</h1>
         </div>
@@ -287,7 +290,7 @@ function SalesRepsContent() {
                   </p>
                   <p className="text-sm font-bold text-muted-foreground flex items-center">
                     <Calendar className="w-4 h-4 mr-1.5" />
-                    Joined {rawRepData?.joined || 'N/A'}
+                    Joined {formatDate(rawRepData?.joined)}
                   </p>
                 </div>
               </div>

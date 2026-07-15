@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex-1 md:pl-16 flex flex-col min-w-0">
         {/* Mobile Header Bar */}
         <header className="md:hidden h-14 border-b border-border bg-card px-4 flex items-center justify-between z-20 flex-shrink-0">
-          <div className="flex items-center gap-2">
+          <Link href="/overview" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-gradient-to-br from-primary to-blue-800 text-white shadow-sm overflow-hidden">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="18 9 410 285" className="w-full h-full">
                 <path d="M125.1,104.9 Q124.0,107.0 124.0,109.4 L124.0,110.7 Q124.0,113.0 126.0,114.2 L127.0,114.8 Q129.0,116.0 131.3,116.0 L316.4,116.0 Q319.0,116.0 321.0,114.4 L322.0,113.6 Q324.0,112.0 323.4,109.5 L322.8,106.6 Q322.0,103.0 320.2,99.8 L300.8,64.0 Q297.0,57.0 289.0,57.0 L159.0,57.0 Q151.0,57.0 147.2,64.0 Z" fill="currentColor"/>
@@ -145,7 +145,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </svg>
             </div>
             <span className="font-bold text-sm tracking-wide text-foreground">DealerPulse</span>
-          </div>
+          </Link>
           
           <div className="flex items-center gap-1">
             {/* Theme Toggle */}

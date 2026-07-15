@@ -6,6 +6,7 @@ import { dealershipData, ANCHOR_DATE, STAGNANT_LEAD_DAYS, getGlobalMetrics } fro
 import { useDashboardContext } from '@/lib/dashboard-context';
 import { EntitySidebarList, SidebarItem } from '@/components/entity-sidebar-list';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 import {
   AlertCircle,
   Clock,
@@ -181,7 +182,7 @@ function ActionCenterContent() {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
       {/* PAGE HEADER */}
-      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-10 sticky top-0">
+      <div className="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 bg-card z-40 sticky top-0">
         <div className="flex items-center">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Action Center</h1>
         </div>
@@ -287,7 +288,7 @@ function StagnantLeadDetail({ lead }: { lead: any }) {
 
   const handleLogCall = () => {
     toast.success('Call logged', {
-      description: `Activity recorded for ${lead.customer_name} on ${new Date(ANCHOR_DATE).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+      description: `Activity recorded for ${lead.customer_name} on ${formatDate(ANCHOR_DATE)}.`
     });
   };
 
@@ -343,7 +344,7 @@ function StagnantLeadDetail({ lead }: { lead: any }) {
             {isCritical ? 'Critical Intervention Required' : isWarning ? 'Attention Needed' : 'Follow-up Recommended'}
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            This lead has a potential value of <strong className="text-foreground">₹{(lead.deal_value / 100000).toFixed(1)} Lakhs</strong> but has seen no activity since <strong className="text-foreground">{new Date(lead.last_activity_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>. The current status is "{statusStr}". {isCritical && 'Immediate reassignment or manager outreach is recommended to prevent losing the deal.'}
+            This lead has a potential value of <strong className="text-foreground">₹{(lead.deal_value / 100000).toFixed(1)} Lakhs</strong> but has seen no activity since <strong className="text-foreground">{formatDate(lead.last_activity_at)}</strong>. The current status is "{statusStr}". {isCritical && 'Immediate reassignment or manager outreach is recommended to prevent losing the deal.'}
           </p>
         </div>
       </div>
@@ -464,7 +465,7 @@ function DelayedDeliveryDetail({ delivery }: { delivery: any }) {
               <Truck className="w-4 h-4 mr-1.5" /> Model: {lead?.model_id?.toUpperCase()}
             </p>
             <p className="text-sm font-bold text-muted-foreground flex items-center">
-              <Calendar className="w-4 h-4 mr-1.5" /> Ordered: {new Date(delivery.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              <Calendar className="w-4 h-4 mr-1.5" /> Ordered: {formatDate(delivery.order_date)}
             </p>
             <p className="text-sm font-bold text-muted-foreground flex items-center">
               <Building2 className="w-4 h-4 mr-1.5" /> {branch?.name || 'Unknown'}
@@ -483,7 +484,7 @@ function DelayedDeliveryDetail({ delivery }: { delivery: any }) {
             Delivery Blocked: {delivery.delay_reason}
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            This vehicle was ordered on <strong className="text-foreground">{new Date(delivery.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> but has been delayed primarily due to <strong className="text-foreground">{delivery.delay_reason}</strong>. The target delivery window has been missed.
+            This vehicle was ordered on <strong className="text-foreground">{formatDate(delivery.order_date)}</strong> but has been delayed primarily due to <strong className="text-foreground">{delivery.delay_reason}</strong>. The target delivery window has been missed.
           </p>
         </div>
       </div>
