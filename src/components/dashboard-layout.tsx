@@ -178,7 +178,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex-1 flex flex-col bg-background h-full overflow-hidden min-w-0 relative">
             
               {/* Mobile/Tablet AI Accordion */}
-              {pathname !== '/action-center' && (
+              {pathname !== '/action-center' && !pathname?.startsWith('/settings') && (
                 <div className="xl:hidden border-b border-border bg-background flex-shrink-0 z-10">
                   <button 
                     onClick={() => setMobileAiOpen(!mobileAiOpen)}
@@ -213,7 +213,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Desktop AI Right Panel */}
-          {pathname !== '/action-center' && (
+          {pathname !== '/action-center' && !pathname?.startsWith('/settings') && (
             <aside className="hidden xl:flex xl:flex-col w-80 border-l border-border bg-card flex-shrink-0 z-20">
               <div className="h-16 flex items-center space-x-2.5 px-5 border-b border-border bg-card flex-shrink-0">
                 <Sparkles className="w-4 h-4 text-primary" />
