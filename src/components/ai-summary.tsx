@@ -15,11 +15,18 @@ interface Message {
   content: string;
 }
 
-// ─── Markdown bold renderer ──────────────────────────────────
+// ─── Markdown bold & blockquote renderer ─────────────────────
 function parseMarkdown(text: string): string {
-  return text
+  // First format blockquote lines if present
+  let formatted = text.replace(
+    /^>\s+(.*?)$/gm,
+    '<div class="bg-amber-500/10 border-l-2 border-amber-500 text-amber-900 dark:text-amber-200 px-3 py-1.5 rounded-r text-[11px] font-medium my-1.5 leading-relaxed">$1</div>'
+  );
+
+  return formatted
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br />');
 }
 
 // ─── Individual chat bubble ──────────────────────────────────
