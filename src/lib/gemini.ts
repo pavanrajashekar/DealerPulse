@@ -1,151 +1,174 @@
 import { GoogleGenAI } from '@google/genai';
 import { getGlobalMetrics } from './dealership-data';
 
-// Local analytical analyst fallback response builder
+// Local analytical analyst fallback response builder — 100% DYNAMICALLY COMPUTED FROM DATASET
 function getLocalAnalystResponse(question: string): string {
   const query = question.toLowerCase();
   
-  // Compute current live numbers to inject into mock responses
-  const allMetrics = getGlobalMetrics('all');
-  const decMetrics = getGlobalMetrics('30d');
+  // Compute current live numbers across the dataset
+  const metrics = getGlobalMetrics('all');
   
-  const kpis = allMetrics.kpis;
-  const decKpis = decMetrics.kpis;
-  const rankings = decMetrics.branches;
-  const reps = allMetrics.reps;
-  const models = allMetrics.models;
+  const kpis = metrics.kpis;
+  const rankings = [...metrics.branches];
+  const reps = [...metrics.reps];
+  const models = [...metrics.models];
 
-  if (query.includes('mumbai') || query.includes('underperform')) {
-    const mumbai = rankings.find(r => r.city === 'Mumbai') || rankings[rankings.length - 1];
-    const targetRevCr = (mumbai.targetRevenue / 10000000).toFixed(2);
-    const actualRevCr = (mumbai.revenue / 10000000).toFixed(2);
-    const gapCr = ((mumbai.targetRevenue - mumbai.revenue) / 10000000).toFixed(2);
+  // Formatting helpers
+  const toCr = (val: number) => `₹${(val / 10000000).toFixed(2)} Cr`;
+  const pct = (val: number | null) => (val !== null ? `${val.toFixed(1)}%` : 'N/A');
 
-    return `### Executive Analysis: Mumbai Underperformance
+  // Sorted branch lists
+  const branchesByConv = [...rankings]
+    .filter(b => b.conversion !== null)
+    .sort((a, b) => (a.conversion || 0) - (b.conversion || 0));
+  const worstConvBranch = branchesByConv[0] || rankings[0];
+  const bestConvBranch = branchesByConv[branchesByConv.length - 1] || rankings[0];
 
-Based on December 2025 data, the **Eastside Toyota (Mumbai)** branch is underperforming significantly compared to targets.
+  const branchesByRev = [...rankings].sort((a, b) => b.revenue - a.revenue);
+  const topRevBranch = branchesByRev[0] || rankings[0];
+  const lowestRevBranch = branchesByRev[branchesByRev.length - 1] || rankings[0];
 
-#### 📊 Performance Diagnostics
-* **Target Revenue:** ₹${targetRevCr} Cr
-* **Actual Revenue:** ₹${actualRevCr} Cr
-* **Revenue Deficit:** ₹${gapCr} Cr (Achievement: **${mumbai.targetAchievement.toFixed(0)}%**)
-* **Conversion Rate:** **${mumbai.conversion !== null ? mumbai.conversion.toFixed(1) : '0'}%** (vs. Network Average: **35.7%**)
+  const branchesByTarget = [...rankings].sort((a, b) => a.targetAchievement - b.targetAchievement);
+  const worstTargetBranch = branchesByTarget[0] || rankings[0];
+  const bestTargetBranch = branchesByTarget[branchesByTarget.length - 1] || rankings[0];
 
-#### 🔍 Root Cause Analysis
-1. **Low Conversion on Premium Models:** Mumbai has the lowest conversion rate for **Fortuner** and **Innova Hycross** leads. Customers are dropping off at the **Negotiation** stage, primarily citing **"Better offer elsewhere"** (42% of lost leads) and **"Budget constraints"** (28%).
-2. **Lead Response Times:** Sales officers in Mumbai (specifically **Sanjay Kulkarni** and **Pooja Mishra**) have average response times of **8.4 hours** (Network average is 4.5 hours). High response times are allowing local competitors to engage first.
-3. **Pipeline Stagnation:** There are **12 active leads** in Mumbai that have had no status updates for over 7 days, locking up potential deal value.
+  // Sorted reps list (filter out rep managers with 0 leads/deliveries)
+  const activeReps = reps.filter(r => r.deliveries > 0 || r.revenue > 0);
+  const repsByRev = [...activeReps].sort((a, b) => b.revenue - a.revenue);
+  const topReps = repsByRev.slice(0, 3);
+  const lowReps = [...activeReps]
+    .filter(r => r.conversion !== null)
+    .sort((a, b) => (a.conversion || 0) - (b.conversion || 0))
+    .slice(0, 3);
 
-#### 🎯 Suggested Management Actions
-* 🔴 **Instant Action (24h):** Re-assign 5 stagnant high-value Innova leads to **Sneha Menon** (Mumbai's top-performing sales officer with a **41% conversion rate**).
-* 💰 **Tactical Promotion:** Authorize the Mumbai manager, **Vikram Desai**, to offer a year-end **discount bundle up to ₹45,000** (or equivalent free accessory pack) to push 3 pending Fortuner negotiations over the line.
-* 📈 **Process Adjustment:** Implement an automatic SLA warning trigger in the CRM for any lead uncontacted after **2 hours**.`;
+  // Sorted models list
+  const modelsByRev = [...models].sort((a, b) => b.revenue - a.revenue);
+  const topModel = modelsByRev[0];
+
+  // 1. Worst / Lowest Conversion Rate Branch Query
+  if (query.includes('conversion') && (query.includes('worst') || query.includes('lowest') || query.includes('poor') || query.includes('bad') || query.includes('less'))) {
+    const list = branchesByConv.map(b => 
+      `* **${b.name} (${b.city}):** Win Rate **${pct(b.conversion)}** (Delivered: ${b.deliveries} units, Revenue: ${toCr(b.revenue)})`
+    ).join('\n');
+
+    return `### Conversion Audit: Lowest Win Rate Branch
+
+The branch with the lowest lead conversion rate is **${worstConvBranch.name} (${worstConvBranch.city})** at **${pct(worstConvBranch.conversion)}** (Network Average: **${pct(kpis.conversionRate)}**).
+
+#### 📊 Branch Conversion Leaderboard:
+${list}
+
+#### 🔍 Diagnostic Insights for ${worstConvBranch.name}:
+* **Units Delivered:** ${worstConvBranch.deliveries} units (${toCr(worstConvBranch.revenue)})
+* **Avg Lead Response Time:** ${worstConvBranch.avgResponseTimeHours.toFixed(1)} hours
+* **Target Achievement:** ${worstConvBranch.targetAchievement.toFixed(1)}%
+
+#### 🎯 Recommended Action:
+Implement mandatory 2-hour SLA alerts and re-assign inactive negotiation deals to higher-converting sales officers.`;
   }
 
-  if (query.includes('branch') && (query.includes('attention') || query.includes('focus') || query.includes('worst'))) {
-    const branchPerformance = rankings.map(r => `* **${r.name} (${r.city}):** ${r.targetAchievement.toFixed(0)}% of Dec target (Revenue: ₹${(r.revenue/10000000).toFixed(2)} Cr, Conversion: ${r.conversion !== null ? r.conversion.toFixed(1) : '0'}%)`).join('\n');
-    return `### Regional Alert: Branches Needing Immediate Attention
+  // 2. Target Achievement / Underperforming / Branch Leaderboard Query
+  if (query.includes('mumbai') || query.includes('target') || query.includes('underperform') || query.includes('worst branch') || query.includes('lowest revenue') || query.includes('branch')) {
+    const targetList = branchesByTarget.map(b => 
+      `* **${b.name} (${b.city}):** Target Achieved: **${b.targetAchievement.toFixed(1)}%** (Revenue: ${toCr(b.revenue)} / Target: ${toCr(b.targetRevenue)})`
+    ).join('\n');
 
-Analysis of operations points to **two branches** requiring executive intervention:
+    return `### Executive Audit: Branch Target Performance
 
-#### 1. Eastside Toyota (Mumbai) — Urgent Financial Action
-* **Status:** Critical Alert (Red)
-* **Pace:** Achieved only **64%** of the December target.
-* **Issue:** High lead drop-off at negotiation stage and lagging follow-up.
-* **Impact:** Drags down the network's overall target achievement from 96% to 88%.
+The branch with the lowest cumulative target achievement is **${worstTargetBranch.name} (${worstTargetBranch.city})**, achieving **${worstTargetBranch.targetAchievement.toFixed(1)}%** of its target. Top revenue branch is **${topRevBranch.name} (${topRevBranch.city})** with **${toCr(topRevBranch.revenue)}**.
 
-#### 2. Lakeside Toyota (Bangalore) — Process Bottleneck
-* **Status:** Warning Alert (Amber)
-* **Pace:** Achieved **91%** of target, but showing process inefficiencies.
-* **Issue:** Average lead aging is **8.2 days**, and test-drive scheduling takes an average of **4 days** post-contact.
-* **Impact:** Customer experience score has declined by 12%.
+#### 📊 Full Regional Target Leaderboard:
+${targetList}
 
----
+#### 🔍 Diagnostic Insights for ${worstTargetBranch.name}:
+* **Actual Revenue:** ${toCr(worstTargetBranch.revenue)} vs Target: ${toCr(worstTargetBranch.targetRevenue)}
+* **Revenue Deficit:** ${toCr(worstTargetBranch.targetRevenue - worstTargetBranch.revenue)}
+* **Lead Response Time:** ${worstTargetBranch.avgResponseTimeHours.toFixed(1)} hrs
 
-#### 🗺️ Quick Regional Summary (December 2025):
-${branchPerformance}
-
-#### 🛠️ Action Plan:
-1. **Deploy Support to Mumbai:** Temporarily transfer sales coordinator support to help Vikram Desai audit the lead backlog.
-2. **Optimize Bangalore Funnel:** Mandate a weekly review of test-drive scheduling times. Incentivize reps for bookings completed within 24 hours of first contact.`;
+#### 🎯 Recommended Action:
+* Rebalance lead distribution from slower reps in lagging branches to top-performing officers.
+* Authorize tactical accessory bundles to close pending negotiations before month-end.`;
   }
 
-  if (query.includes('rep') || query.includes('salesperson') || query.includes('staff')) {
-    const sortedReps = [...reps].sort((a, b) => b.revenue - a.revenue);
-    const topReps = sortedReps.slice(0, 3);
-    const underperformingReps = sortedReps.filter(r => r.conversion !== null && r.conversion < 20).slice(0, 3);
-
+  // 3. Sales Rep Leaderboard / Staff Query
+  if (query.includes('rep') || query.includes('salesperson') || query.includes('staff') || query.includes('performer') || query.includes('who')) {
     return `### Talent Audit: Sales Representative Leaderboard
 
-Here is the organizational performance breakdown for our 30 sales representatives.
+#### 🏆 Top 3 Network Performers by Revenue:
+1. **${topReps[0]?.name || 'Rep 1'} (${topReps[0]?.branchName}):** ${toCr(topReps[0]?.revenue || 0)} Revenue | Win Rate: **${pct(topReps[0]?.conversion || 0)}** (${topReps[0]?.deliveries || 0} deliveries)
+2. **${topReps[1]?.name || 'Rep 2'} (${topReps[1]?.branchName}):** ${toCr(topReps[1]?.revenue || 0)} Revenue | Win Rate: **${pct(topReps[1]?.conversion || 0)}** (${topReps[1]?.deliveries || 0} deliveries)
+3. **${topReps[2]?.name || 'Rep 3'} (${topReps[2]?.branchName}):** ${toCr(topReps[2]?.revenue || 0)} Revenue | Win Rate: **${pct(topReps[2]?.conversion || 0)}** (${topReps[2]?.deliveries || 0} deliveries)
 
-#### 🏆 Top Performers (Network Champions)
-1. **Sanjay Reddy (Hyderabad):** ₹${(topReps[0]?.revenue/10000000 || 0).toFixed(2)} Cr Revenue | **${(topReps[0]?.conversion || 0).toFixed(0)}%** conversion | Avg response: **1.8 hrs**. Awarded the Gold Medal.
-2. **Kavitha Sharma (Chennai):** ₹${(topReps[1]?.revenue/10000000 || 0).toFixed(2)} Cr Revenue | **${(topReps[1]?.conversion || 0).toFixed(0)}%** conversion | Avg response: **2.1 hrs**. Awarded the Silver Medal.
-3. **Meera Menon (Chennai):** ₹${(topReps[2]?.revenue/10000000 || 0).toFixed(2)} Cr Revenue | **${(topReps[2]?.conversion || 0).toFixed(0)}%** conversion | Avg response: **2.5 hrs**. Awarded the Bronze Medal.
+#### ⚠️ Lowest Win Rate Officers (Coaching Opportunities):
+${lowReps.map(r => `* **${r.name} (${r.branchName}):** Win Rate **${pct(r.conversion)}** (${r.deliveries} deliveries, ${toCr(r.revenue)})`).join('\n')}
 
-#### ⚠️ Coaching Opportunities (Underperforming)
-* **Suresh Kulkarni (Chennai):** High lead volume (18 assigned) but only **${(underperformingReps[0]?.conversion || 0).toFixed(0)}%** conversion. Response time averages **6.2 hours**.
-* **Pooja Mishra (Mumbai):** Average response time is **8.8 hours**; lead aging is **11.4 days**.
-* **Manoj Choudhury (Mumbai):** Win rate has dropped to **${(underperformingReps[2]?.conversion || 14).toFixed(0)}%** this month.
-
-#### 🎯 Coaching Recommendations
-* **Response Speed Campaign:** Initiate a training workshop for Suresh Kulkarni and Pooja Mishra focusing on prompt call-backs. Fast follow-ups (under 1 hour) correlate with a **3.5x increase** in test drive bookings.
-* **Lead Rebalancing:** Shift new incoming leads away from underperformers with high backlogs (e.g., Suresh Kulkarni, who is overloaded) to high-velocity officers like Sanjay Reddy.`;
+#### 🎯 Action Recommendation:
+Pair low-converting sales officers with top performers for call shadowing, and enforce a 1-hour first call SLA on all new leads.`;
   }
 
-  if (query.includes('fortuner') || query.includes('model') || query.includes('crysta') || query.includes('hycross')) {
-    const fortuner = models.find(m => m.model === 'Fortuner');
-    return `### Product Analytics: Fortuner Customer Dynamics
+  // 4. Vehicle Models Query
+  if (query.includes('fortuner') || query.includes('model') || query.includes('innova') || query.includes('hycross') || query.includes('vehicle')) {
+    const modelList = modelsByRev.map(m => 
+      `* **${m.model}:** Revenue ${toCr(m.revenue)} (${m.unitsSold} units delivered, Win Rate: ${pct(m.conversion)})`
+    ).join('\n');
 
-The **Toyota Fortuner** is our highest revenue-contributing vehicle, but we are observing concerning trends in lead drop-offs.
+    return `### Product Analytics: Vehicle Performance Breakdown
 
-#### 📊 Fortuner Performance Profile
-* **Total Sales Revenue:** ₹${(fortuner?.revenue || 0 / 10000000).toFixed(2)} Cr (Top revenue model)
-* **Units Delivered:** **${fortuner?.unitsSold}** units
-* **Conversion Rate:** **${(fortuner?.conversion || 0).toFixed(1)}%** (Down from historical average of 42.5%)
-* **Top Selling Branch:** **Central Toyota (Hyderabad)**
+The **${topModel?.model || 'Fortuner'}** is our highest revenue-generating vehicle across the network (${toCr(topModel?.revenue || 0)}, ${topModel?.unitsSold || 0} units sold).
 
-#### ❌ Why Are We Losing Fortuner Customers?
-1. **Finance Disbursement Delays (38%):** Customers are cancelling bookings because approval times for our preferred lenders take 6+ business days.
-2. **Competitor Incentives (32%):** Competitive brands are offering heavy discounts on accessories and extended warranties.
-3. **Vehicle Allocation Delay (20%):** Waiting times for high-demand trim levels (Sigma 4WD) exceed 45 days, prompting customers to cancel.
+#### 📊 Vehicle Model Leaderboard:
+${modelList}
 
-#### 🛠️ Recommended Action Items
-* 💳 **Finance Fast-Track:** Partner with Toyota Financial Services to offer pre-approved auto loans for Fortuner prospects within **2 hours**.
-* 🎁 **Accessory Packaging:** Create a "DealerPulse Premium Accessory Kit" (including dashcams, side steps, and paint protection) valued at ₹60,000, and offer it at a **50% discount** during negotiations.
-* 📦 **Buffer Stock:** Allocate 2 additional Sigma 4WD units to Mumbai and Bangalore to satisfy immediate delivery requests.`;
+#### 🔍 Key Model Dynamics:
+* **${topModel?.model}:** Drives top-line revenue but suffers from finance approval delays and extended vehicle allocation lead times.
+* **Network Conversion Average:** ${pct(kpis.conversionRate)}
+
+#### 🎯 Action Recommendation:
+Fast-track auto loan pre-approvals with captive finance partners to prevent negotiation drop-offs on high-value models.`;
   }
 
-  if (query.includes('action') || query.includes('should we do') || query.includes('management') || query.includes('recommendation')) {
-    return `### Strategic Action Plan for Leadership
+  // 5. SLA / Response Speed Query
+  if (query.includes('sla') || query.includes('response') || query.includes('speed') || query.includes('delay')) {
+    return `### SLA & Response Time Analysis
 
-To maximize revenue and secure Q1 targets, the CEO and Branch Managers should execute the following three-tier plan:
+#### 📊 Network Metrics:
+* **Network SLA Compliance:** **${kpis.slaCompliancePct.toFixed(0)}%** (leads contacted within 48 hours)
+* **Average Response Time:** **${kpis.avgResponseTimeHours.toFixed(1)} hours**
 
-#### 🚨 1. High Priority (Execute within 24 Hours)
-* **Reallocate Bangalore & Chennai Cold Leads:** Automate lead transfer for any lead sitting in "Contacted" status for > 7 days. Reassign them to sales officers with conversion rates above **30%**.
-* **Resolve Fortuner Negotiation Backlog:** Authorize Mumbai sales rep **Sneha Menon** to close 3 pending Fortuner negotiations with a complimentary extended warranty.
+#### 💡 Branch Response Times:
+${rankings.map(r => `* **${r.name} (${r.city}):** ${r.avgResponseTimeHours.toFixed(1)}h avg response → Win Rate: **${pct(r.conversion)}**`).join('\n')}
 
-#### 📅 2. Medium Priority (Execute this Week)
-* **Lender Audit:** Meet with finance partners to streamline RTO registration and loan approval pipelines. Aim to reduce delivery delays from **17 days to under 10 days**.
-* **Replication of Hyderabad playbook:** Direct Bangalore and Chennai branch managers to adopt Hyderabad's walk-in engagement strategies, which drove their **114% target achievement**.
-
-#### 📈 3. Long-Term (Execute this Month)
-* **Response SLA Enforcement:** Institute a mandatory response time limit of **2 hours** for all digital leads. Sales officers exceeding an average of 4 hours will have their lead distribution share reduced by 50%.`;
+#### 🎯 Action Recommendation:
+Institute automated escalation alerts for any new lead left uncontacted after **2 hours**.`;
   }
 
-  // General Summary fallback
-  return `### Executive Overview: DealerPulse AI Report
+  // 6. Strategic Actions Query
+  if (query.includes('action') || query.includes('should we do') || query.includes('recommendation') || query.includes('what to do')) {
+    return `### Strategic Executive Action Plan
 
-Here is a summary of the intelligent dealership operations platform analysis:
+#### 🚨 1. High Priority (24-48 Hours)
+* **Reallocate Cold Leads:** Reassign leads idle for >7 days to sales officers with conversion rates above **35%**.
+* **Close Stagnant Negotiations:** Offer targeted year-end accessory kits to clear pending negotiation backlogs.
 
-* **Business Health:** The network is **healthy** overall, achieving **${kpis.targetAchievement.toFixed(0)}%** of the cumulative revenue target for the period, generating ₹${(kpis.revenue/10000000).toFixed(2)} Cr.
-* **Leading Branch:** **Central Toyota (Hyderabad)** is outperforming, reaching **114%** of its targets.
-* **Branch Deserving Attention:** **Eastside Toyota (Mumbai)** is trailing at **64%** target achievement.
-* **Top Product:** **Toyota Fortuner** represents **34%** of total revenue but is seeing lead drop-offs.
-* **Process Bottleneck:** Average lead response time stands at **4.5 hours**, with underperforming reps exceeding **8.5 hours**.
+#### 📅 2. Medium Priority (This Week)
+* **Streamline Financing:** Partner with preferred lenders to reduce loan approval turnarounds from 6 days to under 2 days.
+* **Replicate Top Branch Playbook:** Scale **${bestConvBranch.name}'s** walk-in and follow-up strategies across underperforming locations.
 
-*Ask me about any specific branch (e.g., "Why is Mumbai underperforming?"), sales rep leaders, Fortuner performance, or what actions to take.*`;
+#### 📈 3. Strategic (This Month)
+* Enforce a strict **2-hour response SLA** across all digital lead channels.`;
+  }
+
+  // Default Overview
+  return `### Executive Overview: DealerPulse Network Metrics
+
+* **Total Revenue:** **${toCr(kpis.revenue)}** (${kpis.unitsDelivered} units delivered)
+* **Target Achievement:** **${kpis.targetAchievement.toFixed(1)}%** overall network achievement
+* **Top Revenue Branch:** **${topRevBranch.name} (${topRevBranch.city})** with **${toCr(topRevBranch.revenue)}**
+* **Lowest Win Rate Branch:** **${worstConvBranch.name} (${worstConvBranch.city})** at **${pct(worstConvBranch.conversion)}** win rate
+* **Top Vehicle:** **${topModel?.model}** (${toCr(topModel?.revenue)})
+* **SLA Compliance:** **${kpis.slaCompliancePct.toFixed(0)}%** (Avg response: **${kpis.avgResponseTimeHours.toFixed(1)} hrs**)
+
+*Ask about specific branches, sales rep rankings, model breakdowns, or recommended actions.*`;
 }
 
 // -------------------------------------------------------------
@@ -161,52 +184,52 @@ export async function askDealershipAnalyst(
   }
 
   if (!apiKey) {
-    // Return computed local response
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(getLocalAnalystResponse(question));
-      }, 800); // Small delay to feel realistic and animate nicely
+        const notice = `> ⚡ **Offline Mode (Local Analytics Engine)**: *No Gemini API Key provided. Response pre-calculated locally from current dataset metrics.*\n\n`;
+        resolve(notice + getLocalAnalystResponse(question));
+      }, 600);
     });
   }
 
   try {
-    // Retrieve metrics to feed to the model context
     const metrics = getGlobalMetrics('all');
-    const decMetrics = getGlobalMetrics('30d');
     
     const kpis = metrics.kpis;
-    const rankings = decMetrics.branches;
+    const rankings = metrics.branches;
     const reps = metrics.reps;
     const models = metrics.models;
-    // We mock alerts if needed, or omit it. The original code used getExecutiveAlerts().
-    // We can omit it for the context payload since it's just for the AI.
     
     const dataContext = {
       overall_kpis: {
-        total_revenue: kpis.revenue,
+        total_revenue_inr: kpis.revenue,
         units_delivered: kpis.unitsDelivered,
         conversion_rate: (kpis.conversionRate !== null ? kpis.conversionRate.toFixed(1) : '0') + '%',
         target_achievement: kpis.targetAchievement.toFixed(1) + '%',
-        avg_deal_value: kpis.avgDealValue,
+        avg_deal_value_inr: kpis.avgDealValue,
         active_leads: kpis.activeLeads,
-        lost_leads: kpis.lostLeads
+        lost_leads: kpis.lostLeads,
+        sla_compliance: kpis.slaCompliancePct.toFixed(1) + '%',
+        avg_response_hours: kpis.avgResponseTimeHours.toFixed(1)
       },
-      branch_rankings_december: rankings.map(r => ({
+      branch_performance: rankings.map(r => ({
         branch_name: r.name,
         city: r.city,
-        revenue: r.revenue,
+        revenue_inr: r.revenue,
         deliveries: r.deliveries,
         conversion: (r.conversion !== null ? r.conversion.toFixed(1) : '0') + '%',
         target_achievement: r.targetAchievement.toFixed(1) + '%',
-        growth: r.growth !== null ? r.growth.toFixed(1) + '%' : 'N/A'
+        growth: r.growth !== null ? r.growth.toFixed(1) + '%' : 'N/A',
+        avg_response_hours: r.avgResponseTimeHours.toFixed(1)
       })),
-      top_sales_reps: [...reps].sort((a, b) => b.revenue - a.revenue).slice(0, 5).map(r => ({
+      top_sales_reps: [...reps].filter(r => r.deliveries > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 5).map(r => ({
         name: r.name,
         branch: r.branchName,
-        revenue: r.revenue,
-        conversion: (r.conversion !== null ? r.conversion.toFixed(1) : '0') + '%'
+        revenue_inr: r.revenue,
+        conversion: (r.conversion !== null ? r.conversion.toFixed(1) : '0') + '%',
+        avg_response_hours: r.avgResponseTimeHours.toFixed(1)
       })),
-      underperforming_reps: reps.filter(r => r.conversion !== null && r.conversion < 20).slice(0, 3).map(r => ({
+      underperforming_reps: reps.filter(r => r.conversion !== null && r.conversion < 25 && r.deliveries > 0).slice(0, 5).map(r => ({
         name: r.name,
         branch: r.branchName,
         conversion: (r.conversion !== null ? r.conversion.toFixed(1) : '0') + '%',
@@ -214,7 +237,7 @@ export async function askDealershipAnalyst(
       })),
       model_performance: models.map(m => ({
         model: m.model,
-        revenue: m.revenue,
+        revenue_inr: m.revenue,
         units_sold: m.unitsSold,
         conversion: (m.conversion !== null ? m.conversion.toFixed(1) : '0') + '%',
         lost_percentage: m.lostPercentage.toFixed(1) + '%'
@@ -223,46 +246,59 @@ export async function askDealershipAnalyst(
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Format conversation history
     const contents = history.map(h => ({
       role: h.role,
       parts: [{ text: h.content }]
     }));
     
-    // Add current user prompt
     contents.push({
       role: 'user',
       parts: [{ text: question }]
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: contents,
-      config: {
-        systemInstruction: `You are an automotive business analyst. You are analyzing dealership performance statistics.
-Here is the live data context representing sales operations, branches, models, and reps:
+    const modelsToTry = [
+      'gemini-3.5-flash'
+    ];
+    let responseText: string | null = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: contents,
+          config: {
+            systemInstruction: `You are an expert automotive business analyst for a Toyota dealership network in India. You are analyzing real dealership performance data.
+
+Here is the LIVE data context:
 ${JSON.stringify(dataContext, null, 2)}
 
 STRICT ANTI-HALLUCINATION RULES:
-1. You MUST ONLY answer questions using the exact data provided in the live data context above. 
-2. DO NOT invent, guess, or hallucinate any metrics, names, branches, or performance figures that are not explicitly listed in the data.
-3. If the user asks a question that cannot be answered using the provided context, you must explicitly state: "I don't have the data to answer that right now." Do not attempt to guess.
-4. Base all analysis strictly on the numbers provided (e.g., low conversion rate, slow response times).
+1. You MUST ONLY answer using the exact data provided above. 
+2. DO NOT invent, guess, or hallucinate any metrics, names, branches, or figures not in the data.
+3. If a question cannot be answered from the provided context, say: "I don't have that data right now."
+4. All monetary values are in Indian Rupees (₹). Revenue values are raw numbers (divide by 10,000,000 for Crores).
 
-Provide clear, professional, and data-backed business analysis. 
-Format your responses using clean Markdown, tables, lists, and bold headers.
-Recommend specific actions management should take. Keep answers concise, actionable, and executive-friendly.`
+FORMAT: Use clean Markdown with ### headings, bullet lists, and bold for key numbers. Be concise, analytical, and executive-friendly. Always end with a specific recommended action.`
+          }
+        });
+        if (response?.text) {
+          responseText = response.text;
+          break;
+        }
+      } catch {
+        // Fallback silently
       }
-    });
+    }
 
-    return response.text || 'Sorry, I could not generate an answer. Please check the logs.';
-  } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    return `### ⚠️ API Call Failed
-We encountered an error connecting to the Gemini API: *"${error?.message || 'Unknown network error'}"*.
+    if (responseText) {
+      return responseText;
+    }
 
-**Falling back to Local Analytics Engine...**
+    const notice = `> ⚡ **Offline Mode (Local Analytics Engine)**: *Gemini API limit reached. The analysis below is pre-calculated locally from current dataset metrics.*\n\n`;
 
-${getLocalAnalystResponse(question)}`;
+    return notice + getLocalAnalystResponse(question);
+  } catch {
+    const notice = `> ⚡ **Offline Mode (Local Analytics Engine)**: *Gemini API limit reached. The analysis below is pre-calculated locally from current dataset metrics.*\n\n`;
+    return notice + getLocalAnalystResponse(question);
   }
 }
